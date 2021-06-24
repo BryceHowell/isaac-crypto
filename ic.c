@@ -1,4 +1,16 @@
 /*
+by JAMES BRYCE HOWELL
+added directly on top of Bob Jenkins' random number generator ISAAC
+This is a symmetric key cipher scheme and utility for file encryption.
+A feedforward element is used so that ciphering is not simply XORing 
+plaintext and CPRNG output.
+
+Creation for use by others in April of 2020
+*/
+
+
+
+/*
 ------------------------------------------------------------------------------
 rand.c: By Bob Jenkins.  My random number generator, ISAAC.  Public Domain.
 MODIFIED:
@@ -19,6 +31,7 @@ MODIFIED:
 #include <fcntl.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 
 #define ind(mm,x)  (*(ub4 *)((ub1 *)(mm) + ((x) & ((RANDSIZ-1)<<2))))
 #define rngstep(mix,a,b,mm,m,m2,r,x) \
@@ -175,13 +188,13 @@ void map_passphrase_to_state(randctx * ctx, unsigned char * pass, int length) {
 //#ifdef NEVER
 int main(int argc, char **argv)
 {
-  if (argc!=5) {
-	  printf("USAGE: isaacstream <commandstring> passphrase input-file output-file\n");
-	  printf("       <commandstring> is a list of single characters for commands and modes\n");
-	  printf("          e- encrypt\n");
-	  printf("          d- decrypt\n");
-	  printf("          r- reveal intial state data\n");
-	  printf("          t- troubleshoot the ciphering process\n");
+  if (argc!=5 && argc!=4) {
+	  fprintf(stderr,"USAGE: ic <commandstring> passphrase input-file [output-file]\n");
+	  fprintf(stderr,"       <commandstring> is a list of single characters for commands and modes\n");
+	  fprintf(stderr,"          e- encrypt\n");
+	  fprintf(stderr,"          d- decrypt\n");
+	  fprintf(stderr,"          r- reveal intial state data\n");
+	  fprintf(stderr,"          t- troubleshoot the ciphering process\n");
 	  goto exiting;
   }
   char flagchar=argv[1][0];
@@ -194,60 +207,62 @@ int main(int argc, char **argv)
 	switch(argv[1][i]) {
 		case 'e':
 		case 'E':
-	  		printf("Encryption mode.\n");
+	  		fprintf(stderr,"Encryption mode.\n");
 	  		modeflag=0;
 			break;
 		case 'd':
 		case 'D':
-	  		printf("Decryption mode.\n");
+	  		fprintf(stderr,"Decryption mode.\n");
 	  		modeflag=1;
 			break;
 		case 'r':
 		case 'R':
-	  		printf("Reveal state from passphrase.\n");
+	  		fprintf(stderr,"Reveal state from passphrase.\n");
 	  		show_state=1;
 			break;
 		case 't':
 		case 'T':
-			printf("Troubleshooting mode.\n");
+			fprintf(stderr,"Troubleshooting mode.\n");
 			debug_mode=1;
 			break;
 		default:
-	  		printf("%c\n",flagchar);
-	  		printf("Invalid command.\n");
+	  		fprintf(stderr,"%c\n",flagchar);
+	  		fprintf(stderr,"Invalid command.\n");
 	  		goto exiting;
   	}
   }
 
   int fd_in,fd_out;
-  if ((fd_in=open(argv[3],O_RDONLY))==-1) { printf("Cannot open input file.\n"); goto exiting; }
-  if ((fd_out=open(argv[4],O_WRONLY | O_CREAT | O_TRUNC))==-1) { printf("Cannot open output file.\n"); goto exiting; }
+  if ((fd_in=open(argv[3],O_RDONLY))==-1) { fprintf(stderr,"Cannot open input file.\n"); goto exiting; }
+  if (argc==4) fd_out=STDOUT_FILENO; else
+  	if ((fd_out=open(argv[4],O_WRONLY | O_CREAT | O_TRUNC))==-1) { fprintf(stderr,"Cannot open output file.\n"); goto exiting; }
   ub4 i,j;
   randctx ctx;
   ctx.randa=ctx.randb=ctx.randc=(ub4)0;
   // NEED TO SET INITIAL STATE BETTER
   for (i=0; i<256; ++i) ctx.randrsl[i]=(ub4)0;
   map_passphrase_to_state(&ctx,argv[2],strlen(argv[2]));
-  randinit(&ctx, TRUE);
+  //randinit(&ctx, TRUE);
   
   make_reverse_table();
   uint64_t weird=weirdfrompwd(argv[2],strlen(argv[2])); 
 
   if (show_state) {
-	  printf("Weird feedforward variable: %08lX \n",weird);
-	  printf("RANDA, RANDB, RANDC: %08lX %08lX %08lX\n",ctx.randa,ctx.randb,ctx.randc);
-	  printf("RANDCNT: %ld\n",ctx.randcnt);
-	  printf("RANDRSL ARRAY:\n");
+	  fprintf(stderr,"Weird feedforward variable: %08lX \n",weird);
+	  fprintf(stderr,"RANDA, RANDB, RANDC: %08lX %08lX %08lX\n",ctx.randa,ctx.randb,ctx.randc);
+	  fprintf(stderr,"RANDCNT: %ld\n",ctx.randcnt);
+	  fprintf(stderr,"RANDRSL ARRAY:\n");
 	  for (int i=0; i<8; i++) { 
-		  for (int j=0; j<8; j++) printf("%08lX ",ctx.randrsl[8*i+j]);
-		  printf("\n");
+		  for (int j=0; j<8; j++) fprintf(stderr,"%08lX ",ctx.randrsl[8*i+j]);
+		  fprintf(stderr,"\n");
 		  }
-	  printf("RANDMEM ARRAY:\n");
+	  fprintf(stderr,"RANDMEM ARRAY:\n");
 	  for (int i=0; i<8; i++) { 
-		  for (int j=0; j<8; j++) printf("%08lX ",ctx.randmem[8*i+j]);
-		  printf("\n");
+		  for (int j=0; j<8; j++) fprintf(stderr,"%08lX ",ctx.randmem[8*i+j]);
+		  fprintf(stderr,"\n");
 		  }
   }
+  randinit(&ctx, TRUE);
 
   unsigned char * W=(unsigned char *)&weird;
   unsigned char buffer[65536]; 
@@ -269,7 +284,7 @@ int main(int argc, char **argv)
 	  if (received<=0) {
 		  close(fd_in);
 		  close(fd_out);
-		  printf("Ciphering complete.\n");
+		  fprintf(stderr,"Ciphering complete.\n");
 	  	  goto exiting;
 		  }
 	  }
@@ -280,7 +295,7 @@ int main(int argc, char **argv)
 	  cipher=plain^(random+weirdbyte); 
 	  if (debug_mode) {
 		  debug_counter++;
-		  printf("cipher: %02X plain: %02X random: %02X weirdbyte: %02X weird: %016X\n",
+		  fprintf(stderr,"cipher: %02X plain: %02X random: %02X weirdbyte: %02X weird: %016X\n",
 			(unsigned int)cipher,(unsigned int)plain,(unsigned int)random,(unsigned int)weirdbyte,
 			(unsigned int)weird); 
 		  if (debug_counter==16) goto exiting;

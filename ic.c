@@ -188,8 +188,8 @@ void map_passphrase_to_state(randctx * ctx, unsigned char * pass, int length) {
 //#ifdef NEVER
 int main(int argc, char **argv)
 {
-  if (argc!=5 && argc!=4) {
-	  fprintf(stderr,"USAGE: ic <commandstring> passphrase input-file [output-file]\n");
+  if (argc!=5) {
+	  fprintf(stderr,"USAGE: ic <commandstring> passphrase input-file output-file\n");
 	  fprintf(stderr,"       <commandstring> is a list of single characters for commands and modes\n");
 	  fprintf(stderr,"          e- encrypt\n");
 	  fprintf(stderr,"          d- decrypt\n");
@@ -207,22 +207,22 @@ int main(int argc, char **argv)
 	switch(argv[1][i]) {
 		case 'e':
 		case 'E':
-	  		fprintf(stderr,"Encryption mode.\n");
+	  		//fprintf(stderr,"Encryption mode.\n");
 	  		modeflag=0;
 			break;
 		case 'd':
 		case 'D':
-	  		fprintf(stderr,"Decryption mode.\n");
+	  		//fprintf(stderr,"Decryption mode.\n");
 	  		modeflag=1;
 			break;
 		case 'r':
 		case 'R':
-	  		fprintf(stderr,"Reveal state from passphrase.\n");
+	  		//fprintf(stderr,"Reveal state from passphrase.\n");
 	  		show_state=1;
 			break;
 		case 't':
 		case 'T':
-			fprintf(stderr,"Troubleshooting mode.\n");
+			//fprintf(stderr,"Troubleshooting mode.\n");
 			debug_mode=1;
 			break;
 		default:
@@ -232,9 +232,11 @@ int main(int argc, char **argv)
   	}
   }
 
+  const char dash[4]="-";
   int fd_in,fd_out;
-  if ((fd_in=open(argv[3],O_RDONLY))==-1) { fprintf(stderr,"Cannot open input file.\n"); goto exiting; }
-  if (argc==4) fd_out=STDOUT_FILENO; else
+  if (strcmp(argv[3],dash)==0) fd_in=STDIN_FILENO; else
+	if ((fd_in=open(argv[3],O_RDONLY))==-1) { fprintf(stderr,"Cannot open input file.\n"); goto exiting; }
+  if (strcmp(argv[4],dash)==0) fd_out=STDOUT_FILENO; else
   	if ((fd_out=open(argv[4],O_WRONLY | O_CREAT | O_TRUNC))==-1) { fprintf(stderr,"Cannot open output file.\n"); goto exiting; }
   ub4 i,j;
   randctx ctx;
@@ -284,7 +286,7 @@ int main(int argc, char **argv)
 	  if (received<=0) {
 		  close(fd_in);
 		  close(fd_out);
-		  fprintf(stderr,"Ciphering complete.\n");
+		  //fprintf(stderr,"Ciphering complete.\n");
 	  	  goto exiting;
 		  }
 	  }
